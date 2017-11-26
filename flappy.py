@@ -20,6 +20,9 @@ JUMP_HEIGHT = (JUMP_SPEED ** 2) / (GRAVITY * 2)
 # This area of the pipe will never have a gap
 PIPE_SOLID_AREA = WINDOW_HEIGHT / 5
 
+current_frame = 0
+last_pipe_frame = 0  # The frame when the last pipe spawned
+pipe_gap_height = JUMP_HEIGHT * 2.5
 
 pipes = []
 score = 0
@@ -34,6 +37,10 @@ class Bird:
     def jump(self):
         self.fall_speed = JUMP_SPEED
 
+    def update_position(self):
+        player.y += player.fall_speed
+        player.fall_speed += GRAVITY
+
 
 class Pipe:
     def __init__(self, gap_height):
@@ -41,6 +48,9 @@ class Pipe:
         self.gap_height = gap_height
         self.gap = random.randrange(PIPE_SOLID_AREA, WINDOW_HEIGHT - PIPE_SOLID_AREA - int(self.gap_height))
         self.scored = False
+
+    def update_position(self):
+        self.x -= SPEED
 
 
 def main():
@@ -56,79 +66,92 @@ def main():
 
 
 def play():
-    global player, score, pipes
+    global player, score, pipes, current_frame
     pipes = []
-    current_frame = 0
-    last_pipe_frame = 0  # The frame when the last pipe spawned
     score = 0
-
-    gap_height = JUMP_HEIGHT * 2.5
 
     player = Bird()
 
     while True:
-        # ========= #
-        # Get input #
-        # ========= #
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
-                elif event.key in (K_SPACE, K_UP):
-                    player.jump()
+        # Get input
+        get_input()
 
-        # =============== #
-        # Compute changes #
-        # =============== #
-
-        # Computer player position
-        player.y += player.fall_speed
-        player.fall_speed += GRAVITY
-
-        # Spawn pipe
-        min_distance_to_pipe = (WINDOW_WIDTH / 3) / SPEED
-        frames_since_pipe = current_frame - last_pipe_frame
-        if frames_since_pipe >= min_distance_to_pipe:
-            # Chance of pipe spawning is 1/(FPS/2) or
-            if random.randrange(FPS / 2) == 0 or frames_since_pipe > min_distance_to_pipe * 2:
-                pipes.append(Pipe(gap_height))
-                last_pipe_frame = current_frame
-                if gap_height > JUMP_HEIGHT * 1.5:
-                    gap_height -= JUMP_HEIGHT / 50
-
-        # Compute pipe positions
-        for index, pipe in enumerate(pipes):
-            pipe.x -= SPEED
-            if pipe.x + PIPE_WIDTH <= (WINDOW_WIDTH / 2) and not pipe.scored:
-                score += 1
-                pipe.scored = True
-                print(score)
-
-            if pipe.x < 0 - PIPE_WIDTH:
-                del pipes[index]
-
-        # Check for collisions
-        GRACE_LENGTH = 2  # The amount of collision that won't count as collision
-        if player.y + GRACE_LENGTH < 0 or player.y - GRACE_LENGTH > WINDOW_HEIGHT:
+        # Compute changes
+        player.update_position()
+        spawn_pipe()
+        compute_pipes()
+        if check_collision():
             return  # Game over
 
-        for pipe in pipes:
-            if pipe.x < player.x + PLAYER_WIDTH - GRACE_LENGTH and pipe.x + PIPE_WIDTH - GRACE_LENGTH > player.x:
-                if player.y < pipe.gap - GRACE_LENGTH or player.y > pipe.gap + pipe.gap_height + GRACE_LENGTH:
-                    return  # Game over
-
-        # ============= #
-        # Update screen #
-        # ============= #
+        # Update screen
         draw_screen()
 
         # Tick
         current_frame += 1
         FPSCLOCK.tick(FPS)
+
+
+def get_input():
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == KEYDOWN:
+            if event.key == K_ESCAPE:
+                pygame.quit()
+                sys.exit()
+            elif event.key in (K_SPACE, K_UP):
+                player.jump()
+
+
+def spawn_pipe():
+    global current_frame, last_pipe_frame, pipe_gap_height
+
+    min_distance_to_pipe = (WINDOW_WIDTH / 3) / SPEED
+    frames_since_pipe = current_frame - last_pipe_frame
+    if frames_since_pipe >= min_distance_to_pipe:
+        # Chance of pipe spawning is 1/(FPS), or 100% if it took too long
+        if random.randrange(FPS) == 0 or frames_since_pipe > min_distance_to_pipe * 2:
+            pipes.append(Pipe(pipe_gap_height))
+            last_pipe_frame = current_frame
+
+            # Make the gap smaller in future pipes
+            if pipe_gap_height > JUMP_HEIGHT * 1.5:
+                pipe_gap_height -= JUMP_HEIGHT / 50
+
+
+def check_collision():
+    GRACE_LENGTH = 2  # The amount of collision that won't count as collision
+
+    # Check if player left window bounds
+    if player.y + GRACE_LENGTH < 0 or player.y - GRACE_LENGTH > WINDOW_HEIGHT:
+        return True  # Game over
+
+    # Check if player collided with a pipe
+    for pipe in pipes:
+        if pipe.x < player.x + PLAYER_WIDTH - GRACE_LENGTH and pipe.x + PIPE_WIDTH - GRACE_LENGTH > player.x:
+            if player.y < pipe.gap - GRACE_LENGTH or player.y > pipe.gap + pipe.gap_height + GRACE_LENGTH:
+                return True  # Game over
+
+    return False  # No collision
+
+
+def compute_pipes():
+    global score
+
+    for index, pipe in enumerate(pipes):
+        # Update position
+        pipe.update_position()
+
+        # Update score
+        if pipe.x + PIPE_WIDTH <= (WINDOW_WIDTH / 2) and not pipe.scored:
+            score += 1
+            pipe.scored = True
+            print(score)
+
+        # Remove old pipes
+        if pipe.x < 0 - PIPE_WIDTH:
+            del pipes[index]
 
 
 def draw_screen():
