@@ -26,7 +26,8 @@ PIPE_SOLID_AREA = int(PLAY_AREA_HEIGHT / 5)
 
 current_frame = 0
 last_pipe_frame = 0  # The frame when the last pipe spawned
-pipe_gap_height = JUMP_HEIGHT * 2.5
+PIPE_GAP_STARTING_HEIGHT = JUMP_HEIGHT * 2.5
+pipe_gap_height = PIPE_GAP_STARTING_HEIGHT
 
 pipes = []
 score = 0
@@ -80,8 +81,10 @@ def main():
 
 
 def play():
-    global player, score, pipes, current_frame
+    global player, score, pipes, current_frame, pipe_gap_height
+    # FIXME: reset gap height
     pipes = []
+    pipe_gap_height = PIPE_GAP_STARTING_HEIGHT
     score = 0
 
     player = Bird()
