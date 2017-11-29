@@ -23,10 +23,11 @@ JUMP_HEIGHT = (JUMP_SPEED ** 2) / (GRAVITY * 2)
 
 # This area of the pipe will never have a gap
 PIPE_SOLID_AREA = int(PLAY_AREA_HEIGHT / 5)
+PIPE_GAP_STARTING_HEIGHT = JUMP_HEIGHT * 2.5
+PIPE_GAP_MINIMUM_HEIGHT = JUMP_HEIGHT * 1.1 + PLAYER_HEIGHT
 
 current_frame = 0
 last_pipe_frame = 0  # The frame when the last pipe spawned
-PIPE_GAP_STARTING_HEIGHT = JUMP_HEIGHT * 2.5
 pipe_gap_height = PIPE_GAP_STARTING_HEIGHT
 
 pipes = []
@@ -133,7 +134,7 @@ def spawn_pipe():
             last_pipe_frame = current_frame
 
             # Make the gap smaller in future pipes
-            if pipe_gap_height > JUMP_HEIGHT * 1.5:
+            if pipe_gap_height > PIPE_GAP_MINIMUM_HEIGHT:
                 pipe_gap_height -= JUMP_HEIGHT / 50
 
 
